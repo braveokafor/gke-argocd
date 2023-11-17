@@ -1,0 +1,219 @@
+# INGRESS
+ingress:
+  # -- Enabled
+  enabled: false
+  # -- Annotations configurations
+  annotations:
+    # -- Kubernetes.io/ingress.global-static-ip-name
+    kubernetes.io/ingress.global-static-ip-name: argocd-public-ip
+  # -- Hosts
+  hosts:
+    - host: "argocd.example.com"
+      service: argocd-server
+      paths:
+        - path: /
+          # service: argocd-server
+
+  # -- Tls
+  tls: []
+
+# IAP - Identity-Aware Proxy
+iap:
+  # -- Enabled
+  enabled: false
+  # -- Client id
+  client_id: abcde12345.apps.googleusercontent.com
+  # -- Client secret
+  client_secret: abcde12345
+
+# OAUTH Credentials - For Login
+oauth:
+  # -- Enabled
+  enabled: false
+  # -- Client id
+  client_id: abcde12345.apps.googleusercontent.com
+  # -- Client secret
+  client_secret: abcde12345
+
+# For Argo Vault Plugin Supporting Resources
+avp:
+  # -- Enabled
+  enabled: true
+
+# ARGO CD - Matches https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
+argo-cd:
+  # -- Additional Labels for Argo CD
+  additionalLabels:
+    app.kubernetes.io/part-of: argocd
+
+  # -- Server configurations
+  server:
+    # -- Additional arguments for the server
+    extraArgs:
+      - --insecure
+    # -- Service annotations
+    service:
+      annotations:
+        # -- Backend configuration for GCP
+        cloud.google.com/backend-config: '{"default": "gke-argocd-backend-config"}'
+        # -- Network Endpoint Groups (NEG) configuration
+        cloud.google.com/neg: '{"ingress": true}'
+
+  # -- Configurations for Argo CD components
+  configs:
+    cm:
+      # -- Argo CD URL
+      url: "http://argocd.example.com"
+      # -- Enable or disable admin account
+      admin.enabled: false
+      # -- Dex configuration for OIDC
+      dex.config: |
+        connectors:
+        - config:
+            issuer: https://accounts.google.com
+            clientID: $gke-argocd-oauth-secret:client_id
+            clientSecret: $gke-argocd-oauth-secret:client_secret
+          type: oidc
+          id: google
+          name: Google
+    rbac:
+      # -- Default RBAC policy
+      policy.default: role:readonly
+      # -- RBAC scopes
+      scopes: "[groups, email]"
+      # -- CSV for RBAC policies
+      policy.csv: |
+        g, user@example.com, role:admin
+
+  # -- Dex service port configuration
+  dex:
+    servicePortHttpName: tcp
+
+  # -- Repo Server configurations
+  repoServer:
+    # -- Pod annotations
+    podAnnotations:
+      traffic.sidecar.istio.io/excludeOutboundPorts: "443"  # Exclude specific ports for Istio sidecar, issue: https://github.com/istio/istio/issues/23802#issuecomment-1711963323
+    # -- Argo Vault Plugin configurations
+    envFrom:
+      - secretRef:
+          name: argocd-vault-plugin-credentials
+    # -- Service account configurations
+    serviceAccount:
+      automountServiceAccountToken: true
+      annotations:
+        iam.gke.io/gcp-service-account: argocd-sa@example-project.iam.gserviceaccount.com
+    # -- RBAC configurations for the repo server
+    rbac:
+      - verbs:
+          - get
+          - list
+          - watch
+        apiGroups:
+          - ""
+        resources:
+          - secrets
+          - configmaps
+    # -- Initialization containers
+    initContainers:
+      - name: download-tools
+        image: registry.access.redhat.com/ubi8
+        env:
+          - name: AVP_VERSION
+            value: 1.16.1
+          - name: YQ_VERSION
+            value: 4.35.2
+        command: [sh, -c]
+        args:
+          - >-
+            curl -L https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v$(AVP_VERSION)/argocd-vault-plugin_$(AVP_VERSION)_linux_amd64 -o argocd-vault-plugin &&
+            chmod +x argocd-vault-plugin &&
+            mv argocd-vault-plugin /custom-tools/
+
+            curl -L https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64 -o yq &&
+            chmod +x yq &&
+            mv yq /custom-tools/
+        volumeMounts:
+          - mountPath: /custom-tools
+            name: custom-tools
+    # -- Extra containers in the repo server
+    extraContainers:
+      # -- ArgoCD Vault Plugin container configuration
+      - name: avp
+        command: [/var/run/argocd/argocd-cmp-server]
+        image: quay.io/argoproj/argocd:v2.6.7
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 999
+        volumeMounts:
+          - mountPath: /var/run/argocd
+            name: var-files
+          - mountPath: /home/argocd/cmp-server/plugins
+            name: plugins
+          - mountPath: /tmp
+            name: cmp-tmp
+          # Register plugins into sidecar
+          - mountPath: /home/argocd/cmp-server/config/plugin.yaml
+            subPath: avp.yaml
+            name: cmp-plugin
+          # Mount tools into $PATH
+          - name: custom-tools
+            subPath: argocd-vault-plugin
+            mountPath: /usr/local/bin/argocd-vault-plugin
+
+      # argocd-vault-plugin with Helm
+      - name: avp-helm
+        command: [/var/run/argocd/argocd-cmp-server]
+        image: quay.io/argoproj/argocd:v2.6.7
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 999
+        volumeMounts:
+          - mountPath: /var/run/argocd
+            name: var-files
+          - mountPath: /home/argocd/cmp-server/plugins
+            name: plugins
+          - mountPath: /tmp
+            name: cmp-tmp
+          # Register plugins into sidecar
+          - mountPath: /home/argocd/cmp-server/config/plugin.yaml
+            subPath: avp-helm.yaml
+            name: cmp-plugin
+          # Important: Mount tools into $PATH
+          - name: custom-tools
+            subPath: argocd-vault-plugin
+            mountPath: /usr/local/bin/argocd-vault-plugin
+
+      # argocd-vault-plugin with Kustomize
+      - name: avp-kustomize
+        command: [/var/run/argocd/argocd-cmp-server]
+        image: quay.io/argoproj/argocd:v2.6.7
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 999
+        volumeMounts:
+          - mountPath: /var/run/argocd
+            name: var-files
+          - mountPath: /home/argocd/cmp-server/plugins
+            name: plugins
+          - mountPath: /tmp
+            name: cmp-tmp
+          # Register plugins into sidecar
+          - mountPath: /home/argocd/cmp-server/config/plugin.yaml
+            subPath: avp-kustomize.yaml
+            name: cmp-plugin
+          # Important: Mount tools into $PATH
+          - name: custom-tools
+            subPath: argocd-vault-plugin
+            mountPath: /usr/local/bin/argocd-vault-plugin
+
+    # -- Volume configurations
+    volumes:
+      - configMap:
+          name: cmp-plugin
+        name: cmp-plugin
+      - name: cmp-tmp
+        emptyDir: {}
+      - name: custom-tools
+        emptyDir: {}
+    ## end argo vault plugin

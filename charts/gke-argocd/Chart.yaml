@@ -1,0 +1,18 @@
+apiVersion: v2
+name: gke-argocd
+description: ArgoCD on GKE with integrated Google Cloud optimisations and security.
+icon: https://github.com/braveokafor/gke-argocd/blob/main/icon.png
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+dependencies:
+  - name: argo-cd
+    version: 5.51.0
+    repository: https://argoproj.github.io/argo-helm
+home: https://github.com/braveokafor/gke-argocd/
+sources:
+  - https://github.com/braveokafor/gke-argocd/
+maintainers:
+  - email: okaforbrave@gmail.com
+    name: braveokafor
+    url: https://www.linkedin.com/in/braveokafor/

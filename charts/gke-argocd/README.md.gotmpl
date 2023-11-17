@@ -1,0 +1,45 @@
+
+{{ template "chart.header" . }}
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Description
+
+{{ template "chart.description" . }}
+
+## Usage
+
+### Add Helm repository
+
+```shell
+helm repo add gke-argocd https://braveokafor.github.io/gke-argocd/
+helm repo update
+```
+
+### Install Helm chart
+
+Using default configurations:
+
+```bash
+helm install --generate-name gke-argocd/gke-argocd
+```
+
+Customising configurations:
+
+```bash
+helm install --generate-name --set ingress.enabled=true, gke-argocd/gke-argocd
+```
+
+## Configuration
+
+The following table lists the configurable parameters of the gke-argocd chart and their default values.
+
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.maintainersSection" . }}
