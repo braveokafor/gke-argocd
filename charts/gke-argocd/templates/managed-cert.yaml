@@ -1,0 +1,12 @@
+{{- if .Values.ingress.enabled -}} # TLS Cert
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: {{ include "gke-argocd.name" . }}-managed-cert
+  namespace: {{ $.Release.Namespace }}
+spec:
+  domains:
+    {{- range .Values.ingress.hosts }}
+    - {{ .host }}
+    {{- end }}
+{{- end -}}

@@ -1,0 +1,11 @@
+{{- if .Values.ingress.enabled -}} # HTTPS Redirect
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: {{ include "gke-argocd.name" . }}-frontend-config
+  namespace: {{ $.Release.Namespace }}
+spec:
+  redirectToHttps:
+    enabled: true
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT
+{{- end -}}
