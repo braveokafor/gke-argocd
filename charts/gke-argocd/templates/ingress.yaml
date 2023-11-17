@@ -32,11 +32,11 @@ spec:
       http:
         paths:
           {{- range .paths }}
-          - path: {{ . }}
+          - path: {{ .path }}
             pathType: {{ $pathType }}
             backend:
               service:
-                name: {{ .serviceName | default (printf "%s-server" $name) }}
+                name: {{ .service | default (printf "%s-server" $name) }}
                 port:
                   name: http
           {{- end }}

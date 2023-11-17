@@ -68,7 +68,7 @@ The following table lists the configurable parameters of the gke-argocd chart an
 | ingress.annotations | object | `{"kubernetes.io/ingress.global-static-ip-name":"argocd-public-ip"}` | Annotations configurations |
 | ingress.annotations."kubernetes.io/ingress.global-static-ip-name" | string | `"argocd-public-ip"` | Kubernetes.io/ingress.global-static-ip-name |
 | ingress.enabled | bool | `false` | Enabled |
-| ingress.hosts | list | `[{"host":"argocd.example.com","paths":["/"],"serviceName":"argocd-server"}]` | Hosts |
+| ingress.hosts | list | `[{"host":"argocd.example.com","paths":[{"path":"/"}],"service":"argocd-server"}]` | Hosts |
 | ingress.tls | list | `[]` | Tls |
 | oauth.client_id | string | `"abcde12345.apps.googleusercontent.com"` | Client id |
 | oauth.client_secret | string | `"abcde12345"` | Client secret |

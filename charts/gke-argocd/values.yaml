@@ -8,13 +8,12 @@ ingress:
     kubernetes.io/ingress.global-static-ip-name: argocd-public-ip
   # -- Hosts
   hosts:
-    [
-      {
-        "host": "argocd.example.com",
-        "paths": ["/"],
-        "serviceName": "argocd-server",
-      },
-    ]
+    - host: "argocd.example.com"
+      service: argocd-server
+      paths:
+        - path: /
+          # service: argocd-server
+
   # -- Tls
   tls: []
 
@@ -94,7 +93,7 @@ argo-cd:
   repoServer:
     # -- Pod annotations
     podAnnotations:
-      traffic.sidecar.istio.io/excludeOutboundPorts: "443" # Exclude specific ports for Istio sidecar, issue: https://github.com/istio/istio/issues/23802#issuecomment-1711963323
+      traffic.sidecar.istio.io/excludeOutboundPorts: "443"  # Exclude specific ports for Istio sidecar, issue: https://github.com/istio/istio/issues/23802#issuecomment-1711963323
     # -- Argo Vault Plugin configurations
     envFrom:
       - secretRef:
